@@ -1,0 +1,20 @@
+# Render Blueprint - deploy backend with: New > Blueprint > select this repo
+services:
+  - type: web
+    name: agrosense-backend
+    runtime: python
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.9
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DATABASE_URL
+        value: sqlite+aiosqlite:///./agrosense.db
+      - key: FRONTEND_URL
+        value: https://your-frontend.vercel.app
+      - key: CORS_ORIGINS
+        value: https://your-frontend.vercel.app
+    healthCheckPath: /health

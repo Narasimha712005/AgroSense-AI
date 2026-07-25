@@ -1,9 +1,10 @@
 import axios from 'axios';
 
-// In production (Vercel), set VITE_API_URL to your backend URL, e.g.
-// https://agrosense-backend.onrender.com/api
-// In development, it falls back to '/api' which is proxied by Vite to localhost:8000.
-const API_BASE = import.meta.env.VITE_API_URL || '/api';
+// Production Backend URL (Render)
+// Development fallback: Vite proxy to localhost backend
+const API_BASE =
+  import.meta.env.VITE_API_URL ||
+  'https://agrosense-ai-x1wv.onrender.com/api';
 
 const api = axios.create({
   baseURL: API_BASE,
@@ -12,14 +13,21 @@ const api = axios.create({
   },
 });
 
-// Interceptor to add auth token
+// Add JWT token automatically
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem('agrosense_token');
+
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
+
   return config;
 });
+
+
+// =====================
+// Prediction Interfaces
+// =====================
 
 export interface PredictionRequest {
   nitrogen: number;
@@ -31,10 +39,12 @@ export interface PredictionRequest {
   rainfall: number;
 }
 
+
 export interface CropResult {
   crop: string;
   confidence: number;
 }
+
 
 export interface CropInfo {
   season: string;
@@ -53,6 +63,7 @@ export interface CropInfo {
   profit_estimate: string;
 }
 
+
 export interface PredictionResponse {
   predicted_crop: string;
   confidence: number;
@@ -63,6 +74,11 @@ export interface PredictionResponse {
   created_at?: string;
 }
 
+
+// =====================
+// Weather Interface
+// =====================
+
 export interface WeatherData {
   temperature: number;
   humidity: number;
@@ -71,6 +87,7 @@ export interface WeatherData {
   description: string;
   icon: string;
   city: string;
+
   forecast: Array<{
     day: string;
     temp_high: number;
@@ -79,6 +96,11 @@ export interface WeatherData {
     rain_probability: number;
   }>;
 }
+
+
+// =====================
+// User Interface
+// =====================
 
 export interface User {
   id: number;
@@ -90,43 +112,116 @@ export interface User {
   created_at: string;
 }
 
+
 export interface AuthResponse {
   access_token: string;
   token_type: string;
   user: User;
 }
 
-// Auth APIs
+
+// =====================
+// Authentication APIs
+// =====================
+
 export const authAPI = {
-  login: (email: string, password: string) =>
-    api.post<AuthResponse>('/auth/login', { email, password }),
-  
-  register: (email: string, username: string, password: string, full_name: string) =>
-    api.post<AuthResponse>('/auth/register', { email, username, password, full_name }),
-  
-  getProfile: (token: string) =>
-    api.get<User>('/auth/me', { params: { token } }),
+
+  login: (
+    email: string,
+    password: string
+  ) =>
+    api.post<AuthResponse>(
+      '/auth/login',
+      {
+        email,
+        password,
+      }
+    ),
+
+
+  register: (
+    email: string,
+    username: string,
+    password: string,
+    full_name: string
+  ) =>
+    api.post<AuthResponse>(
+      '/auth/register',
+      {
+        email,
+        username,
+        password,
+        full_name,
+      }
+    ),
+
+
+  getProfile: (
+    token: string
+  ) =>
+    api.get<User>(
+      '/auth/me',
+      {
+        params: {
+          token,
+        },
+      }
+    ),
 };
 
+
+// =====================
 // Prediction APIs
+// =====================
+
 export const predictionAPI = {
-  predict: (data: PredictionRequest) =>
-    api.post<PredictionResponse>('/predict', data),
-  
+
+  predict: (
+    data: PredictionRequest
+  ) =>
+    api.post<PredictionResponse>(
+      '/predict',
+      data
+    ),
+
+
   getHistory: () =>
     api.get('/history'),
-  
+
+
   getStats: () =>
     api.get('/stats'),
-  
+
+
   getModelInfo: () =>
     api.get('/model-info'),
+
 };
 
+
+// =====================
 // Weather APIs
+// =====================
+
 export const weatherAPI = {
-  getWeather: (lat?: number, lon?: number, city?: string) =>
-    api.get<WeatherData>('/weather', { params: { lat, lon, city } }),
+
+  getWeather: (
+    lat?: number,
+    lon?: number,
+    city?: string
+  ) =>
+    api.get<WeatherData>(
+      '/weather',
+      {
+        params: {
+          lat,
+          lon,
+          city,
+        },
+      }
+    ),
+
 };
+
 
 export default api;

@@ -4,6 +4,15 @@
 
 AgroSense AI helps farmers and agronomists choose the best crop to grow based on soil nutrients (N, P, K), temperature, humidity, pH, and rainfall — using a Random Forest model trained on 2,200+ agricultural data points with **99.8% accuracy** across **22 crops**.
 
+---
+
+## 🌐 Live Demo
+
+🚀 **AgroSense AI Application:**  
+https://agro-sense-ai-eta.vercel.app/
+
+---
+
 ![Python](https://img.shields.io/badge/Python-3.11-blue)
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.115-009688)
 ![React](https://img.shields.io/badge/React-19-61DAFB)

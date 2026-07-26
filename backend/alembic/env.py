@@ -28,9 +28,9 @@ if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
 
-# -------------------------------
-# Database URL FIX
-# -------------------------------
+# -------------------------------------------------
+# Database URL Configuration
+# -------------------------------------------------
 
 settings = get_settings()
 
@@ -40,17 +40,29 @@ database_url = os.environ.get(
 )
 
 
-# Render / Neon gives:
-# postgresql://user:pass@host/db
+# Render / Neon provides:
+# postgresql://username:password@host/database?sslmode=require
 #
 # SQLAlchemy async requires:
-# postgresql+asyncpg://user:pass@host/db
+# postgresql+asyncpg://username:password@host/database?ssl=require
+
 
 if database_url.startswith("postgresql://"):
     database_url = database_url.replace(
         "postgresql://",
         "postgresql+asyncpg://",
         1
+    )
+
+
+# Fix Neon SSL parameter for asyncpg
+# psycopg2 uses sslmode=require
+# asyncpg uses ssl=require
+
+if "sslmode=require" in database_url:
+    database_url = database_url.replace(
+        "sslmode=require",
+        "ssl=require"
     )
 
 
@@ -64,11 +76,14 @@ target_metadata = Base.metadata
 
 
 
-# -------------------------------
+# -------------------------------------------------
 # Offline Migration
-# -------------------------------
+# -------------------------------------------------
 
 def run_migrations_offline() -> None:
+    """
+    Run migrations without connecting to database.
+    """
 
     url = config.get_main_option(
         "sqlalchemy.url"
@@ -89,13 +104,11 @@ def run_migrations_offline() -> None:
 
 
 
-# -------------------------------
+# -------------------------------------------------
 # Online Migration
-# -------------------------------
+# -------------------------------------------------
 
-def do_run_migrations(
-    connection: Connection
-):
+def do_run_migrations(connection: Connection):
 
     context.configure(
         connection=connection,
@@ -138,6 +151,10 @@ def run_migrations_online():
     )
 
 
+
+# -------------------------------------------------
+# Start Migration
+# -------------------------------------------------
 
 if context.is_offline_mode():
 

@@ -118,10 +118,17 @@ async def register(data: UserRegister, request: Request, db: AsyncSession = Depe
     await db.commit()
     await db.refresh(user)
 
-    # Send OTP email (console mode logs the OTP in dev)
-    send_verification_otp_email(user.email, user.username, otp)
+   # Send OTP email
+email_sent = send_verification_otp_email(
+    user.email,
+    user.username,
+    otp
+)
 
-    return _issue_tokens(user)
+if not email_sent:
+    logger.error("OTP email failed to send for %s", user.email)
+
+return _issue_tokens(user)
 
 
 @router.post("/verify-otp", response_model=MessageResponse)

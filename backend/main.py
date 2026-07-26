@@ -1,7 +1,13 @@
 """
 AgroSense AI - Backend Application
-FastAPI server with ML prediction, authentication, and weather services.
-Self-healing startup: model is validated and retrained if necessary.
+
+FastAPI server with:
+- ML crop prediction
+- Authentication
+- Email verification
+- Weather services
+- CORS support for Vercel frontend
+
 """
 
 import logging
@@ -16,7 +22,7 @@ from app.core.config import get_settings
 
 
 # ============================================================
-# LOGGING SETUP
+# LOGGING
 # ============================================================
 
 logging.basicConfig(
@@ -31,22 +37,20 @@ logger = logging.getLogger("agrosense")
 settings = get_settings()
 
 
+
 # ============================================================
-# LIFESPAN
+# STARTUP / SHUTDOWN
 # ============================================================
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """
-    Application startup and shutdown handling.
-    """
 
     logger.info("=" * 60)
     logger.info("  AgroSense AI - Starting Backend")
     logger.info("=" * 60)
 
 
-    # ---------------- DATABASE ----------------
+    # DATABASE
 
     logger.info("Initializing database...")
 
@@ -55,18 +59,22 @@ async def lifespan(app: FastAPI):
         logger.info("Database ready.")
 
     except Exception as e:
-        logger.error("Database initialization failed: %s", e)
+        logger.error(
+            "Database initialization failed: %s",
+            e
+        )
         raise
 
 
-    # ---------------- ML MODEL ----------------
+
+    # ML MODEL
 
     logger.info("Initializing ML model service...")
 
     try:
+
         from app.services.ml_service import predictor
 
-        # Force model loading
         _ = predictor.model
 
         logger.info(
@@ -74,36 +82,54 @@ async def lifespan(app: FastAPI):
             len(predictor.model.classes_)
         )
 
+
     except Exception as e:
-        logger.error("ML model initialization failed: %s", e)
-        logger.error("Prediction service may be unavailable.")
+
+        logger.error(
+            "ML model initialization failed: %s",
+            e
+        )
+
 
 
     logger.info("=" * 60)
-    logger.info("  Backend started successfully!")
-    logger.info("  Docs: /docs")
+    logger.info(" Backend started successfully!")
+    logger.info(" Docs available at /docs")
     logger.info("=" * 60)
 
 
     yield
 
 
-    logger.info("AgroSense AI - Shutting down.")
+    logger.info(
+        "AgroSense AI shutting down."
+    )
+
 
 
 
 # ============================================================
-# FASTAPI INSTANCE
+# FASTAPI APP
 # ============================================================
 
 app = FastAPI(
+
     title="AgroSense AI",
-    description="Intelligent Crop Recommendation Platform powered by Machine Learning",
+
+    description=(
+        "Intelligent Crop Recommendation "
+        "Platform powered by Machine Learning"
+    ),
+
     version="1.0.0",
+
     lifespan=lifespan,
+
     docs_url="/docs",
-    redoc_url="/redoc",
+
+    redoc_url="/redoc"
 )
+
 
 
 
@@ -111,56 +137,79 @@ app = FastAPI(
 # CORS CONFIGURATION
 # ============================================================
 
-# Allowed frontend URLs
 
-allowed_origins = [
+origins = [
+
+    # Production frontend
     "https://agro-sense-ai-eta.vercel.app",
+
+
+    # Local development
     "http://localhost:5173",
     "http://localhost:3000",
+
+
+    # Render backend
+    "https://agrosense-ai-backend.onrender.com"
+
 ]
 
 
-# Add extra origins from environment variables
+
+# Add environment CORS values
 
 if settings.CORS_ORIGINS:
-    extra_origins = [
-        origin.strip()
-        for origin in settings.CORS_ORIGINS.split(",")
-        if origin.strip()
-    ]
 
-    allowed_origins.extend(extra_origins)
+    origins.extend(
+
+        [
+            x.strip()
+
+            for x in settings.CORS_ORIGINS.split(",")
+
+            if x.strip()
+        ]
+
+    )
+
 
 
 # Remove duplicates
 
-allowed_origins = list(set(allowed_origins))
+origins = list(set(origins))
+
+
+
+logger.info(
+    "Allowed CORS origins: %s",
+    origins
+)
+
 
 
 app.add_middleware(
+
     CORSMiddleware,
 
-    allow_origins=allowed_origins,
+
+    allow_origins=origins,
+
 
     allow_credentials=True,
 
+
     allow_methods=[
-        "GET",
-        "POST",
-        "PUT",
-        "PATCH",
-        "DELETE",
-        "OPTIONS",
+        "*"
     ],
 
+
     allow_headers=[
-        "Authorization",
-        "Content-Type",
-        "Accept",
-        "Origin",
+        "*"
     ],
 
 )
+
+
 
 
 
@@ -168,17 +217,22 @@ app.add_middleware(
 # ROUTERS
 # ============================================================
 
+
 from app.routers import auth, predictions, weather
 
 
 app.include_router(auth.router)
+
 app.include_router(predictions.router)
+
 app.include_router(weather.router)
 
 
 
+
+
 # ============================================================
-# ROOT ENDPOINTS
+# ROOT ROUTES
 # ============================================================
 
 
@@ -186,11 +240,18 @@ app.include_router(weather.router)
 async def root():
 
     return {
+
         "name": "AgroSense AI",
+
         "version": "1.0.0",
-        "description": "Intelligent Crop Recommendation Platform",
-        "docs": "/docs",
+
+        "description":
+            "Intelligent Crop Recommendation Platform",
+
+        "docs": "/docs"
+
     }
+
 
 
 
@@ -198,6 +259,9 @@ async def root():
 async def health_check():
 
     return {
+
         "status": "healthy",
+
         "service": "AgroSense AI Backend"
+
     }

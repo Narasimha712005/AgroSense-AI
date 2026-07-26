@@ -3,6 +3,7 @@ AgroSense AI - Backend Application
 FastAPI server with ML prediction, authentication, and weather services.
 Self-healing startup: model is validated and retrained if necessary.
 """
+
 import logging
 import sys
 from contextlib import asynccontextmanager
@@ -12,6 +13,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.database import init_db
 from app.core.config import get_settings
+
 
 # ============================================================
 # LOGGING SETUP
@@ -23,54 +25,75 @@ logging.basicConfig(
     datefmt="%Y-%m-%d %H:%M:%S",
     handlers=[logging.StreamHandler(sys.stdout)],
 )
+
 logger = logging.getLogger("agrosense")
 
 settings = get_settings()
 
 
 # ============================================================
-# LIFESPAN (startup / shutdown)
+# LIFESPAN
 # ============================================================
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Application lifespan - initialize DB and validate ML model."""
+    """
+    Application startup and shutdown handling.
+    """
+
     logger.info("=" * 60)
     logger.info("  AgroSense AI - Starting Backend")
     logger.info("=" * 60)
 
-    # --- Database ---
+
+    # ---------------- DATABASE ----------------
+
     logger.info("Initializing database...")
+
     try:
         await init_db()
         logger.info("Database ready.")
+
     except Exception as e:
         logger.error("Database initialization failed: %s", e)
         raise
 
-    # --- ML Model (self-healing) ---
+
+    # ---------------- ML MODEL ----------------
+
     logger.info("Initializing ML model service...")
+
     try:
         from app.services.ml_service import predictor
-        # Force model load at startup so errors surface immediately
+
+        # Force model loading
         _ = predictor.model
-        logger.info("ML model loaded and validated. Classes: %d", len(predictor.model.classes_))
+
+        logger.info(
+            "ML model loaded and validated. Classes: %d",
+            len(predictor.model.classes_)
+        )
+
     except Exception as e:
         logger.error("ML model initialization failed: %s", e)
-        logger.error("The /api/predict endpoint will be unavailable.")
+        logger.error("Prediction service may be unavailable.")
+
 
     logger.info("=" * 60)
     logger.info("  Backend started successfully!")
-    logger.info("  Docs: http://localhost:8000/docs")
+    logger.info("  Docs: /docs")
     logger.info("=" * 60)
 
+
     yield
+
 
     logger.info("AgroSense AI - Shutting down.")
 
 
+
 # ============================================================
-# APP INSTANCE
+# FASTAPI INSTANCE
 # ============================================================
 
 app = FastAPI(
@@ -82,25 +105,86 @@ app = FastAPI(
     redoc_url="/redoc",
 )
 
-# CORS middleware - origins configurable via FRONTEND_URL / CORS_ORIGINS env vars
+
+
+# ============================================================
+# CORS CONFIGURATION
+# ============================================================
+
+# Allowed frontend URLs
+
+allowed_origins = [
+    "https://agro-sense-ai-eta.vercel.app",
+    "http://localhost:5173",
+    "http://localhost:3000",
+]
+
+
+# Add extra origins from environment variables
+
+if settings.CORS_ORIGINS:
+    extra_origins = [
+        origin.strip()
+        for origin in settings.CORS_ORIGINS.split(",")
+        if origin.strip()
+    ]
+
+    allowed_origins.extend(extra_origins)
+
+
+# Remove duplicates
+
+allowed_origins = list(set(allowed_origins))
+
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.cors_origins,
+
+    allow_origins=allowed_origins,
+
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+
+    allow_methods=[
+        "GET",
+        "POST",
+        "PUT",
+        "PATCH",
+        "DELETE",
+        "OPTIONS",
+    ],
+
+    allow_headers=[
+        "Authorization",
+        "Content-Type",
+        "Accept",
+        "Origin",
+    ],
+
 )
 
-# Include routers
-from app.routers import auth, predictions, weather  # noqa: E402
+
+
+# ============================================================
+# ROUTERS
+# ============================================================
+
+from app.routers import auth, predictions, weather
+
 
 app.include_router(auth.router)
 app.include_router(predictions.router)
 app.include_router(weather.router)
 
 
+
+# ============================================================
+# ROOT ENDPOINTS
+# ============================================================
+
+
 @app.get("/")
 async def root():
+
     return {
         "name": "AgroSense AI",
         "version": "1.0.0",
@@ -109,6 +193,11 @@ async def root():
     }
 
 
+
 @app.get("/health")
 async def health_check():
-    return {"status": "healthy", "service": "AgroSense AI Backend"}
+
+    return {
+        "status": "healthy",
+        "service": "AgroSense AI Backend"
+    }

@@ -48,6 +48,11 @@ class RefreshRequest(BaseModel):
     refresh_token: str
 
 
+class VerifyOTPRequest(BaseModel):
+    email: str = Field(max_length=255)
+    otp: str = Field(min_length=6, max_length=6, pattern=r"^\d{6}$")
+
+
 class ForgotPasswordRequest(BaseModel):
     email: str = Field(max_length=255)
 

@@ -16,9 +16,11 @@ class User(Base):
     full_name = Column(String(200), default="")
     is_active = Column(Boolean, default=True)
     is_admin = Column(Boolean, default=False)
-    # Email verification
+    # Email verification (OTP based; legacy link tokens still supported)
     is_verified = Column(Boolean, default=False)
     verification_token = Column(String(255), nullable=True, index=True)
+    verification_otp = Column(String(6), nullable=True)
+    verification_otp_expires = Column(DateTime, nullable=True)
     # Password reset
     reset_token = Column(String(255), nullable=True, index=True)
     reset_token_expires = Column(DateTime, nullable=True)

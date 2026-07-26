@@ -55,8 +55,9 @@ export default function Login() {
       const res = await authAPI.resendVerification(email);
       toast.success(res.data.message);
       setShowResend(false);
+      navigate('/verify-otp', { state: { email } });
     } catch {
-      toast.error('Could not resend verification email');
+      toast.error('Could not send verification OTP');
     }
   };
 
@@ -120,7 +121,7 @@ export default function Login() {
                 onClick={handleResendVerification}
                 className="w-full text-sm text-amber-400 hover:text-amber-300 underline"
               >
-                Resend verification email
+                Send verification OTP
               </button>
             )}
 

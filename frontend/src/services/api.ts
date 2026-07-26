@@ -4,8 +4,7 @@ import axios from 'axios';
 // Development fallback: Vite proxy to localhost backend
 const API_BASE =
   import.meta.env.VITE_API_URL ||
-  'https://agrosense-ai-x1wv.onrender.com/api';
-
+  'https://agrosense-ai-backend.onrender.com/api';
 const api = axios.create({
   baseURL: API_BASE,
   headers: {
@@ -228,6 +227,10 @@ export const authAPI = {
 
   verifyEmail: (token: string) =>
     api.get<MessageResponse>(`/auth/verify-email/${token}`),
+
+
+  verifyOTP: (email: string, otp: string) =>
+    api.post<MessageResponse>('/auth/verify-otp', { email, otp }),
 
 
   resendVerification: (email: string) =>

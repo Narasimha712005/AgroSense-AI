@@ -1,4 +1,4 @@
-"""Authentication flow tests: register, verify, login, refresh, password reset."""
+"""Authentication flow tests: register, OTP verify, login, refresh, password reset."""
 
 STRONG_PW = "FarmSecure123"
 USER = {
@@ -30,8 +30,9 @@ def test_register_success(client, captured_emails):
     assert body["refresh_token"]
     assert body["user"]["email"] == USER["email"]
     assert body["user"]["is_verified"] is False
-    # Verification email token was generated and "sent"
-    assert "verification_token" in captured_emails
+    # A 6-digit verification OTP was generated and "sent"
+    assert captured_emails["verification_otp"].isdigit()
+    assert len(captured_emails["verification_otp"]) == 6
 
 
 def test_register_duplicate_email(client):
@@ -40,23 +41,98 @@ def test_register_duplicate_email(client):
     assert "Email already registered" in res.json()["detail"]
 
 
-def test_verify_email(client, captured_emails):
-    # Register a second user to get a fresh verification token
+def test_verify_otp(client, captured_emails):
+    # Register a second user to get a fresh OTP
+    email = "verifyme@agrosense.ai"
     res = client.post("/api/auth/register", json={
-        "email": "verifyme@agrosense.ai",
+        "email": email,
         "username": "verifyme",
         "password": STRONG_PW,
         "full_name": "Verify Me",
     })
     assert res.status_code == 200
-    token = captured_emails["verification_token"]
+    otp = captured_emails["verification_otp"]
 
-    res = client.get(f"/api/auth/verify-email/{token}")
+    # Wrong OTP rejected
+    wrong = "000000" if otp != "000000" else "111111"
+    res = client.post("/api/auth/verify-otp", json={"email": email, "otp": wrong})
+    assert res.status_code == 400
+
+    # Unknown user -> 404
+    res = client.post("/api/auth/verify-otp", json={"email": "ghost@agrosense.ai", "otp": otp})
+    assert res.status_code == 404
+
+    # Malformed OTP -> 422 (Pydantic pattern)
+    res = client.post("/api/auth/verify-otp", json={"email": email, "otp": "12ab56"})
+    assert res.status_code == 422
+
+    # Correct OTP verifies the account
+    res = client.post("/api/auth/verify-otp", json={"email": email, "otp": otp})
+    assert res.status_code == 200
+    assert res.json()["message"] == "Email verified successfully"
+
+    # Verifying again is idempotent (already verified)
+    res = client.post("/api/auth/verify-otp", json={"email": email, "otp": otp})
     assert res.status_code == 200
 
-    # Token is single-use
-    res = client.get(f"/api/auth/verify-email/{token}")
+
+def test_resend_verification_sends_new_otp(client, captured_emails):
+    email = "resendme@agrosense.ai"
+    res = client.post("/api/auth/register", json={
+        "email": email,
+        "username": "resendme",
+        "password": STRONG_PW,
+        "full_name": "Resend Me",
+    })
+    assert res.status_code == 200
+    first_otp = captured_emails["verification_otp"]
+
+    res = client.post("/api/auth/resend-verification", json={"email": email})
+    assert res.status_code == 200
+    assert "verification OTP" in res.json()["message"]
+    new_otp = captured_emails["verification_otp"]
+
+    # The old OTP is replaced; the newest one verifies
+    if new_otp != first_otp:
+        res = client.post("/api/auth/verify-otp", json={"email": email, "otp": first_otp})
+        assert res.status_code == 400
+    res = client.post("/api/auth/verify-otp", json={"email": email, "otp": new_otp})
+    assert res.status_code == 200
+
+
+def test_expired_otp_rejected(client, captured_emails):
+    from datetime import datetime, timedelta
+
+    email = "expired@agrosense.ai"
+    res = client.post("/api/auth/register", json={
+        "email": email,
+        "username": "expired",
+        "password": STRONG_PW,
+        "full_name": "Expired OTP",
+    })
+    assert res.status_code == 200
+    otp = captured_emails["verification_otp"]
+
+    # Force the OTP to be expired directly in the DB
+    import asyncio
+    from sqlalchemy import update
+    from app.core.database import AsyncSessionLocal
+    from app.models.database_models import User
+
+    async def expire():
+        async with AsyncSessionLocal() as session:
+            await session.execute(
+                update(User)
+                .where(User.email == email)
+                .values(verification_otp_expires=datetime.utcnow() - timedelta(minutes=1))
+            )
+            await session.commit()
+
+    asyncio.run(expire())
+
+    res = client.post("/api/auth/verify-otp", json={"email": email, "otp": otp})
     assert res.status_code == 400
+    assert "expired" in res.json()["detail"].lower()
 
 
 def test_login_success(client):

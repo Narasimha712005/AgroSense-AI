@@ -95,6 +95,11 @@ def generate_secure_token() -> str:
     return secrets.token_urlsafe(48)
 
 
+def generate_otp() -> str:
+    """Generate a cryptographically secure random 6-digit OTP, e.g. "483921"."""
+    return f"{secrets.randbelow(1_000_000):06d}"
+
+
 # ============================================================
 # SIMPLE IN-MEMORY RATE LIMITER
 # ============================================================

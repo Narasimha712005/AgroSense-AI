@@ -61,6 +61,43 @@ def _build_html(title: str, body: str, button_text: str, button_url: str) -> str
     """
 
 
+def _build_otp_html(username: str, otp: str) -> str:
+    """HTML template for OTP verification emails (no action link)."""
+    return f"""
+    <div style="font-family:Arial,sans-serif;max-width:520px;margin:0 auto;
+                background:#0f172a;border-radius:16px;padding:32px;color:#f1f5f9">
+
+      <h1 style="color:#22c55e;font-size:22px;margin-bottom:8px">
+        🌱 AgroSense AI
+      </h1>
+
+      <h2 style="font-size:18px">Verify your email</h2>
+
+      <p style="color:#94a3b8;line-height:1.6">
+        Hello {username},<br><br>
+        Your email verification OTP is:
+      </p>
+
+      <div style="margin:24px 0;text-align:center">
+        <span style="display:inline-block;background:#1e293b;color:#22c55e;
+               font-size:32px;font-weight:bold;letter-spacing:10px;
+               padding:16px 28px;border-radius:12px">
+          {otp}
+        </span>
+      </div>
+
+      <p style="color:#94a3b8;line-height:1.6">
+        This OTP expires in <strong>10 minutes</strong>.
+      </p>
+
+      <p style="color:#64748b;font-size:12px">
+        If you didn't request this, you can safely ignore this email.
+      </p>
+
+    </div>
+    """
+
+
 # -----------------------------
 # Console Email
 # -----------------------------
@@ -70,7 +107,7 @@ def _send_console(to_email: str, subject: str, html: str, url: str) -> bool:
     logger.info("=" * 60)
     logger.info("EMAIL (console mode) -> %s", to_email)
     logger.info("Subject: %s", subject)
-    logger.info("Action link: %s", url)
+    logger.info("Action (link/OTP): %s", url)
     logger.info("=" * 60)
 
     return True
@@ -425,6 +462,35 @@ def send_verification_email(
         html,
 
         url
+
+    )
+
+
+
+
+
+# -----------------------------
+# Verification OTP Email
+# -----------------------------
+
+def send_verification_otp_email(
+    to_email: str,
+    username: str,
+    otp: str
+) -> bool:
+    """Send a 6-digit email verification OTP (expires in 10 minutes)."""
+
+    html = _build_otp_html(username, otp)
+
+    return _send(
+
+        to_email,
+
+        "Your AgroSense AI Verification OTP",
+
+        html,
+
+        otp,  # shown in console mode during development
 
     )
 

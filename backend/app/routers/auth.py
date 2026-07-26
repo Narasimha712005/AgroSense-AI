@@ -1,6 +1,7 @@
-"""Authentication router: register, login, email verification, password reset,
+"""Authentication router: register, login, email OTP verification, password reset,
 Google OAuth, token refresh, and profile."""
 import logging
+import secrets
 from datetime import datetime, timedelta
 from urllib.parse import urlencode
 
@@ -17,6 +18,7 @@ from app.core.security import (
     create_refresh_token,
     decode_access_token,
     decode_refresh_token,
+    generate_otp,
     generate_secure_token,
     get_password_hash,
     rate_limit,
@@ -33,13 +35,16 @@ from app.models.schemas import (
     UserLogin,
     UserRegister,
     UserResponse,
+    VerifyOTPRequest,
 )
-from app.services.email_service import send_password_reset_email, send_verification_email
+from app.services.email_service import send_password_reset_email, send_verification_otp_email
 
 logger = logging.getLogger("agrosense.auth")
 settings = get_settings()
 
 router = APIRouter(prefix="/api/auth", tags=["Authentication"])
+
+OTP_EXPIRE_MINUTES = 10
 
 
 def _issue_tokens(user: User) -> TokenResponse:
@@ -74,12 +79,12 @@ async def get_current_user(token: str = None, db: AsyncSession = Depends(get_db)
 
 
 # ============================================================
-# REGISTER + EMAIL VERIFICATION
+# REGISTER + EMAIL OTP VERIFICATION
 # ============================================================
 
 @router.post("/register", response_model=TokenResponse)
 async def register(data: UserRegister, request: Request, db: AsyncSession = Depends(get_db)):
-    """Register a new user and send a verification email."""
+    """Register a new user and send a 6-digit verification OTP by email."""
     rate_limit(request, "register", max_requests=10, window_seconds=60)
 
     # Password strength validation
@@ -97,30 +102,61 @@ async def register(data: UserRegister, request: Request, db: AsyncSession = Depe
     if result.scalar_one_or_none():
         raise HTTPException(status_code=400, detail="Username already taken")
 
-    # Create user (unverified) with secure verification token
-    verification_token = generate_secure_token()
+    # Create user (unverified) with a short-lived verification OTP
+    otp = generate_otp()
     user = User(
         email=data.email,
         username=data.username,
         hashed_password=get_password_hash(data.password),
         full_name=data.full_name or "",
         is_verified=False,
-        verification_token=verification_token,
+        verification_otp=otp,
+        verification_otp_expires=datetime.utcnow() + timedelta(minutes=OTP_EXPIRE_MINUTES),
         auth_provider="local",
     )
     db.add(user)
     await db.commit()
     await db.refresh(user)
 
-    # Send verification email (console mode logs the link in dev)
-    send_verification_email(user.email, user.username, verification_token)
+    # Send OTP email (console mode logs the OTP in dev)
+    send_verification_otp_email(user.email, user.username, otp)
 
     return _issue_tokens(user)
 
 
+@router.post("/verify-otp", response_model=MessageResponse)
+async def verify_otp(data: VerifyOTPRequest, request: Request, db: AsyncSession = Depends(get_db)):
+    """Verify a user's email with the 6-digit OTP sent by email."""
+    rate_limit(request, "verify-otp", max_requests=10, window_seconds=60)
+
+    result = await db.execute(select(User).where(User.email == data.email))
+    user = result.scalar_one_or_none()
+
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    if user.is_verified:
+        return MessageResponse(message="Email verified successfully")
+
+    if not user.verification_otp or not secrets.compare_digest(user.verification_otp, data.otp):
+        raise HTTPException(status_code=400, detail="Invalid OTP")
+
+    if not user.verification_otp_expires or user.verification_otp_expires < datetime.utcnow():
+        raise HTTPException(status_code=400, detail="OTP expired. Please request a new one.")
+
+    user.is_verified = True
+    user.verification_otp = None
+    user.verification_otp_expires = None
+    user.verification_token = None
+    await db.commit()
+
+    logger.info("Email verified via OTP for user %s", user.username)
+    return MessageResponse(message="Email verified successfully")
+
+
 @router.get("/verify-email/{token}", response_model=MessageResponse)
 async def verify_email(token: str, db: AsyncSession = Depends(get_db)):
-    """Verify a user's email using the token from the verification link."""
+    """Legacy: verify a user's email using the token from an old verification link."""
     result = await db.execute(select(User).where(User.verification_token == token))
     user = result.scalar_one_or_none()
 
@@ -129,6 +165,8 @@ async def verify_email(token: str, db: AsyncSession = Depends(get_db)):
 
     user.is_verified = True
     user.verification_token = None
+    user.verification_otp = None
+    user.verification_otp_expires = None
     await db.commit()
 
     logger.info("Email verified for user %s", user.username)
@@ -137,20 +175,21 @@ async def verify_email(token: str, db: AsyncSession = Depends(get_db)):
 
 @router.post("/resend-verification", response_model=MessageResponse)
 async def resend_verification(data: ForgotPasswordRequest, request: Request, db: AsyncSession = Depends(get_db)):
-    """Resend the verification email."""
+    """Generate and send a fresh verification OTP."""
     rate_limit(request, "resend-verification", max_requests=3, window_seconds=300)
 
     result = await db.execute(select(User).where(User.email == data.email))
     user = result.scalar_one_or_none()
 
     if user and not user.is_verified:
-        if not user.verification_token:
-            user.verification_token = generate_secure_token()
-            await db.commit()
-        send_verification_email(user.email, user.username, user.verification_token)
+        otp = generate_otp()
+        user.verification_otp = otp
+        user.verification_otp_expires = datetime.utcnow() + timedelta(minutes=OTP_EXPIRE_MINUTES)
+        await db.commit()
+        send_verification_otp_email(user.email, user.username, otp)
 
     # Always return success (don't leak which emails exist)
-    return MessageResponse(message="If the email exists, a verification link has been sent.")
+    return MessageResponse(message="If the email exists, a verification OTP has been sent.")
 
 
 # ============================================================

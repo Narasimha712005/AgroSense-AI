@@ -6,6 +6,7 @@ import Register from './pages/Register'
 import ForgotPassword from './pages/ForgotPassword'
 import ResetPassword from './pages/ResetPassword'
 import VerifyEmail from './pages/VerifyEmail'
+import VerifyOTP from './pages/VerifyOTP'
 import AuthCallback from './pages/AuthCallback'
 import Dashboard from './pages/Dashboard'
 import Predict from './pages/Predict'
@@ -34,6 +35,7 @@ function App() {
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password/:token" element={<ResetPassword />} />
         <Route path="/verify/:token" element={<VerifyEmail />} />
+        <Route path="/verify-otp" element={<VerifyOTP />} />
         <Route path="/auth/callback" element={<AuthCallback />} />
         <Route element={<AppLayout />}>
           <Route path="/dashboard" element={<Dashboard />} />

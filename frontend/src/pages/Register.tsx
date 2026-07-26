@@ -62,10 +62,10 @@ export default function Register() {
     setLoading(true);
     try {
       await register(email, username, password, fullName);
-      toast.success('Account created! Check your email to verify your account.', {
+      toast.success('Account created! Enter the OTP we sent to your email.', {
         duration: 6000,
       });
-      navigate('/dashboard');
+      navigate('/verify-otp', { state: { email } });
     } catch (err: unknown) {
       const error = err as any;
       const detail = error?.response?.data?.detail;

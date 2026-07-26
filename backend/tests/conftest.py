@@ -42,16 +42,16 @@ def reset_rate_limiter():
 
 @pytest.fixture
 def captured_emails(monkeypatch):
-    """Capture verification/reset tokens instead of sending real emails."""
+    """Capture verification OTPs / reset tokens instead of sending real emails."""
     captured = {}
 
-    def fake_verification(to, username, token):
-        captured["verification_token"] = token
+    def fake_verification_otp(to, username, otp):
+        captured["verification_otp"] = otp
 
     def fake_reset(to, username, token):
         captured["reset_token"] = token
 
     import app.routers.auth as auth_router
-    monkeypatch.setattr(auth_router, "send_verification_email", fake_verification)
+    monkeypatch.setattr(auth_router, "send_verification_otp_email", fake_verification_otp)
     monkeypatch.setattr(auth_router, "send_password_reset_email", fake_reset)
     return captured

@@ -16,6 +16,15 @@ class User(Base):
     full_name = Column(String(200), default="")
     is_active = Column(Boolean, default=True)
     is_admin = Column(Boolean, default=False)
+    # Email verification
+    is_verified = Column(Boolean, default=False)
+    verification_token = Column(String(255), nullable=True, index=True)
+    # Password reset
+    reset_token = Column(String(255), nullable=True, index=True)
+    reset_token_expires = Column(DateTime, nullable=True)
+    # Google OAuth
+    google_id = Column(String(255), nullable=True, unique=True, index=True)
+    auth_provider = Column(String(50), default="local")  # local | google
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 

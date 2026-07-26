@@ -1,7 +1,9 @@
 """Pydantic schemas for request/response validation."""
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, Field
 from typing import Optional, List
 from datetime import datetime
+
+_EMAIL_PATTERN = r"^[^@\s]+@[^@\s]+\.[^@\s]+$"
 
 
 # ============================================================
@@ -9,15 +11,15 @@ from datetime import datetime
 # ============================================================
 
 class UserRegister(BaseModel):
-    email: str
-    username: str
-    password: str
-    full_name: Optional[str] = ""
+    email: str = Field(pattern=_EMAIL_PATTERN, max_length=255)
+    username: str = Field(min_length=3, max_length=50, pattern=r"^[a-zA-Z0-9_.-]+$")
+    password: str = Field(min_length=8, max_length=128)
+    full_name: Optional[str] = Field(default="", max_length=200)
 
 
 class UserLogin(BaseModel):
-    email: str
-    password: str
+    email: str = Field(max_length=255)
+    password: str = Field(max_length=128)
 
 
 class UserResponse(BaseModel):
@@ -27,6 +29,8 @@ class UserResponse(BaseModel):
     full_name: str
     is_active: bool
     is_admin: bool
+    is_verified: bool = False
+    auth_provider: str = "local"
     created_at: datetime
 
     class Config:
@@ -35,8 +39,25 @@ class UserResponse(BaseModel):
 
 class TokenResponse(BaseModel):
     access_token: str
+    refresh_token: Optional[str] = None
     token_type: str = "bearer"
     user: UserResponse
+
+
+class RefreshRequest(BaseModel):
+    refresh_token: str
+
+
+class ForgotPasswordRequest(BaseModel):
+    email: str = Field(max_length=255)
+
+
+class ResetPasswordRequest(BaseModel):
+    password: str = Field(min_length=8, max_length=128)
+
+
+class MessageResponse(BaseModel):
+    message: str
 
 
 # ============================================================
@@ -44,13 +65,14 @@ class TokenResponse(BaseModel):
 # ============================================================
 
 class PredictionRequest(BaseModel):
-    nitrogen: float
-    phosphorus: float
-    potassium: float
-    temperature: float
-    humidity: float
-    ph: float
-    rainfall: float
+    # Bounds match the agronomic ranges of the training dataset
+    nitrogen: float = Field(ge=0, le=300)
+    phosphorus: float = Field(ge=0, le=300)
+    potassium: float = Field(ge=0, le=300)
+    temperature: float = Field(ge=-10, le=60)
+    humidity: float = Field(ge=0, le=100)
+    ph: float = Field(ge=0, le=14)
+    rainfall: float = Field(ge=0, le=1000)
 
 
 class CropResult(BaseModel):

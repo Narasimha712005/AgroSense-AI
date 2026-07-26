@@ -25,6 +25,51 @@ api.interceptors.request.use((config) => {
 });
 
 
+// Auto-refresh expired access tokens (single retry per request)
+let refreshing: Promise<string | null> | null = null;
+
+async function refreshAccessToken(): Promise<string | null> {
+  const refreshToken = localStorage.getItem('agrosense_refresh_token');
+  if (!refreshToken) return null;
+
+  try {
+    const res = await axios.post(`${API_BASE}/auth/refresh`, {
+      refresh_token: refreshToken,
+    });
+    localStorage.setItem('agrosense_token', res.data.access_token);
+    if (res.data.refresh_token) {
+      localStorage.setItem('agrosense_refresh_token', res.data.refresh_token);
+    }
+    return res.data.access_token;
+  } catch {
+    localStorage.removeItem('agrosense_token');
+    localStorage.removeItem('agrosense_refresh_token');
+    return null;
+  }
+}
+
+api.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    const original = error.config;
+
+    if (error.response?.status === 401 && !original._retry) {
+      original._retry = true;
+      refreshing = refreshing || refreshAccessToken();
+      const newToken = await refreshing;
+      refreshing = null;
+
+      if (newToken) {
+        original.headers.Authorization = `Bearer ${newToken}`;
+        return api(original);
+      }
+    }
+
+    return Promise.reject(error);
+  }
+);
+
+
 // =====================
 // Prediction Interfaces
 // =====================
@@ -109,14 +154,22 @@ export interface User {
   full_name: string;
   is_active: boolean;
   is_admin: boolean;
+  is_verified: boolean;
+  auth_provider: string;
   created_at: string;
 }
 
 
 export interface AuthResponse {
   access_token: string;
+  refresh_token?: string;
   token_type: string;
   user: User;
+}
+
+
+export interface MessageResponse {
+  message: string;
 }
 
 
@@ -167,6 +220,30 @@ export const authAPI = {
         },
       }
     ),
+
+
+  refresh: (refresh_token: string) =>
+    api.post<AuthResponse>('/auth/refresh', { refresh_token }),
+
+
+  verifyEmail: (token: string) =>
+    api.get<MessageResponse>(`/auth/verify-email/${token}`),
+
+
+  resendVerification: (email: string) =>
+    api.post<MessageResponse>('/auth/resend-verification', { email }),
+
+
+  forgotPassword: (email: string) =>
+    api.post<MessageResponse>('/auth/forgot-password', { email }),
+
+
+  resetPassword: (token: string, password: string) =>
+    api.post<MessageResponse>(`/auth/reset-password/${token}`, { password }),
+
+
+  // Full-page redirect to backend Google OAuth flow
+  googleLoginUrl: () => `${API_BASE}/auth/google/login`,
 };
 
 

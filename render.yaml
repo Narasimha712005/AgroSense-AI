@@ -1,20 +1,51 @@
 # Render Blueprint - deploy backend with: New > Blueprint > select this repo
+databases:
+  - name: agrosense-db
+    plan: free
+    databaseName: agrosense
+    user: agrosense
+
 services:
   - type: web
     name: agrosense-backend
     runtime: python
     rootDir: backend
     buildCommand: pip install -r requirements.txt
-    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    # Run DB migrations, then start the API
+    startCommand: alembic upgrade head && uvicorn main:app --host 0.0.0.0 --port $PORT
     envVars:
       - key: PYTHON_VERSION
         value: 3.11.9
       - key: SECRET_KEY
         generateValue: true
       - key: DATABASE_URL
-        value: sqlite+aiosqlite:///./agrosense.db
+        fromDatabase:
+          name: agrosense-db
+          property: connectionString
       - key: FRONTEND_URL
-        value: https://your-frontend.vercel.app
+        value: https://agro-sense-ai-eta.vercel.app
+      - key: BACKEND_URL
+        value: https://agrosense-ai-x1wv.onrender.com
       - key: CORS_ORIGINS
-        value: https://your-frontend.vercel.app
+        value: https://agro-sense-ai-eta.vercel.app
+      - key: REQUIRE_EMAIL_VERIFICATION
+        value: "False"
+      - key: EMAIL_MODE
+        value: console
+      - key: EMAIL_FROM
+        value: AgroSense AI <no-reply@agrosense.ai>
+      - key: SMTP_HOST
+        value: smtp.gmail.com
+      - key: SMTP_PORT
+        value: "587"
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASSWORD
+        sync: false
+      - key: SENDGRID_API_KEY
+        sync: false
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
     healthCheckPath: /health

@@ -129,7 +129,7 @@ async def register(
 
     # Send the OTP email AFTER the response is returned (never blocks the user)
     logger.info("Scheduling OTP email to %s (background)", user.email)
-    background_tasks.add_task(send_verification_otp_email, user.email, user.username, otp)
+    background_tasks.add_task( send_verification_otp_email,user.email,user.username,otp,)
 
     tokens = _issue_tokens(user)
     t_end = time.perf_counter()

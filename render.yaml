@@ -25,7 +25,7 @@ services:
       - key: FRONTEND_URL
         value: https://agro-sense-ai-eta.vercel.app
       - key: BACKEND_URL
-        value: https://agrosense-ai-x1wv.onrender.com
+        value: https://agrosense-ai-backend.onrender.com
       - key: CORS_ORIGINS
         value: https://agro-sense-ai-eta.vercel.app
       - key: REQUIRE_EMAIL_VERIFICATION

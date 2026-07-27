@@ -18,8 +18,8 @@ AgroSense AI helps farmers and agronomists choose the best crop to grow based on
 | Service  | URL |
 |----------|-----|
 | Frontend (Vercel) | https://agro-sense-ai-eta.vercel.app |
-| Backend API (Render) | https://agrosense-ai-x1wv.onrender.com |
-| API Docs (Swagger) | https://agrosense-ai-x1wv.onrender.com/docs |
+| Backend API (Render) | https://agrosense-ai-backend.onrender.com |
+| API Docs (Swagger) | https://agrosense-ai-backend.onrender.com/docs |
 
 > ⏳ The free Render instance sleeps after inactivity — the first request may take ~50 seconds.
 
@@ -204,7 +204,7 @@ POST /api/predict
 1. In [Vercel](https://vercel.com): **New Project → Import** your repo.
 2. Set **Root Directory** to `frontend`.
 3. Add environment variable:
-   - `VITE_API_URL` = `https://agrosense-ai-x1wv.onrender.com/api`
+   - `VITE_API_URL` = `https://agrosense-ai-backend.onrender.com/api`
 4. Deploy. Vercel auto-detects Vite and uses `vercel.json`.
 
 ### Backend → Render
@@ -223,7 +223,7 @@ POST /api/predict
 | `SECRET_KEY` | strong random string |
 | `DATABASE_URL` | Render PostgreSQL URL (`postgres://...` is auto-converted to asyncpg) |
 | `FRONTEND_URL` | `https://agro-sense-ai-eta.vercel.app` |
-| `BACKEND_URL` | `https://agrosense-ai-x1wv.onrender.com` |
+| `BACKEND_URL` | `https://agrosense-ai-backend.onrender.com` |
 | `CORS_ORIGINS` | `https://agro-sense-ai-eta.vercel.app` |
 | `REQUIRE_EMAIL_VERIFICATION` | `True` (production) / `False` (testing) |
 | `EMAIL_MODE` | `sendgrid`, `smtp` or `console` |
@@ -234,7 +234,7 @@ POST /api/predict
 ### Google OAuth setup
 
 1. [Google Cloud Console](https://console.cloud.google.com/apis/credentials) → **Create OAuth client ID** (Web application).
-2. Authorized redirect URI: `https://agrosense-ai-x1wv.onrender.com/api/auth/google/callback`
+2. Authorized redirect URI: `https://agrosense-ai-backend.onrender.com/api/auth/google/callback`
 3. Copy the client ID/secret into the backend environment variables.
 
 ## 🧠 ML Model

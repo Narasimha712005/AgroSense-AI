@@ -236,7 +236,7 @@ async def register(
 
 
 
-   db.add(user)
+db.add(user)
 
 await db.commit()
 await db.refresh(user)

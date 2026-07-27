@@ -83,7 +83,7 @@ AgroSense-AI/
 ├── frontend/                 # React + Vite + TypeScript app
 │   ├── src/
 │   │   ├── pages/            # Landing, Login, Register, ForgotPassword, ResetPassword,
-│   │   │                     # VerifyEmail, AuthCallback, Dashboard, Predict, Weather, ...
+│   │   │                     # VerifyOTP, AuthCallback, Dashboard, Predict, Weather, ...
 │   │   ├── components/       # Layout & UI components
 │   │   ├── context/          # Auth context (JWT + refresh + Google)
 │   │   └── services/         # Axios API client with auto token refresh
@@ -169,9 +169,9 @@ Interactive docs available at `/docs` (Swagger) and `/redoc`.
 
 | Method | Endpoint                             | Auth | Description |
 |--------|--------------------------------------|------|-------------|
-| POST   | `/api/auth/register`                 | ❌   | Register (sends verification email), returns access + refresh tokens |
-| GET    | `/api/auth/verify-email/{token}`     | ❌   | Verify email address |
-| POST   | `/api/auth/resend-verification`      | ❌   | Resend the verification email |
+| POST   | `/api/auth/register`                 | ❌   | Register (sends verification OTP email), returns access + refresh tokens |
+| POST   | `/api/auth/verify-otp`               | ❌   | Verify email with the 6-digit OTP |
+| POST   | `/api/auth/resend-verification`      | ❌   | Resend the verification OTP |
 | POST   | `/api/auth/login`                    | ❌   | Login (rate limited), returns access + refresh tokens |
 | POST   | `/api/auth/refresh`                  | ❌   | Exchange refresh token for new token pair |
 | POST   | `/api/auth/forgot-password`          | ❌   | Send password reset email |

@@ -236,13 +236,22 @@ async def register(
 
 
 
-    db.add(user)
+   db.add(user)
 
-    await db.commit()
+await db.commit()
+await db.refresh(user)
 
-    await db.refresh(user)
+logger.info("About to send OTP to %s", user.email)
 
+email_sent = send_verification_otp_email(
+    user.email,
+    user.username,
+    otp
+)
 
+logger.info("Email sent result: %s", email_sent)
+
+return _issue_tokens(user)
 
     # SEND OTP EMAIL
     email_sent = send_verification_otp_email(

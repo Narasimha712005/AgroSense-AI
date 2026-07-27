@@ -122,6 +122,8 @@ def _send_smtp(to_email: str, subject: str, html: str) -> bool:
 
     try:
 
+        logger.info("Connecting to SMTP server...")
+
         msg = MIMEMultipart("alternative")
 
         msg["Subject"] = subject
@@ -132,44 +134,44 @@ def _send_smtp(to_email: str, subject: str, html: str) -> bool:
             MIMEText(html, "html")
         )
 
-
         with smtplib.SMTP(
             settings.SMTP_HOST,
             settings.SMTP_PORT,
             timeout=20
         ) as server:
 
+            logger.info("Starting TLS...")
             server.starttls()
 
+            logger.info("Logging into Gmail...")
             server.login(
                 settings.SMTP_USER,
                 settings.SMTP_PASSWORD
             )
 
+            logger.info("Sending email...")
             server.sendmail(
                 settings.SMTP_USER,
                 to_email,
                 msg.as_string()
             )
 
-
         logger.info(
-            "SMTP email sent to %s",
+            "SMTP email sent successfully to %s",
             to_email
         )
 
         return True
 
+    except Exception:
 
-    except Exception as e:
+        import traceback
 
-        logger.error(
-            "SMTP email failed: %s",
-            e
-        )
+        logger.error("========== SMTP ERROR ==========")
+        logger.error(traceback.format_exc())
+        logger.error("================================")
 
         return False
-
 
 
 
